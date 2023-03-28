@@ -1,0 +1,63 @@
+version: "3.6"
+services:
+  zabbix-mariadb:
+    container_name: "zabbix-mariadb"
+    environment:
+      - "MYSQL_USER=zabbix"
+      - "MYSQL_ROOT_PASSWORD=root"
+      - "MYSQL_PASSWORD=zabbix"
+      - "MYSQL_DATABASE=zabbix"
+    expose:
+      - "3306/tcp"
+    image: "mariadb:10.10.3-jammy"
+    restart: "always"
+    volumes:
+      - "mariadb_data:/var/lib/mysql"
+
+  zabbix-server:
+    container_name: "zabbix-server"
+    environment:
+      - "DB_SERVER_HOST=zabbix-mariadb"
+      - "MYSQL_DATABASE=zabbix"
+      - "MYSQL_PASSWORD=zabbix"
+      - "MYSQL_USER=zabbix"
+    expose:
+      - "10051/tcp"
+    image: "zabbix/zabbix-server-mysql:ubuntu-6.4.0"
+    depends_on:
+      - zabbix-mariadb
+    user: "1997"
+    volumes:
+      - "server_data:/var/lib/zabbix"
+      - "server_export:/var/lib/zabbix/export"
+      - "server_snmptraps:/var/lib/zabbix/snmptraps"
+    working_dir: "/var/lib/zabbix"
+
+  zabbix-web:
+    container_name: "zabbix-web"
+    environment:
+      - "ZBX_SERVER_HOST=zabbix-server"
+      - "MYSQL_USER=zabbix"
+      - "MYSQL_PASSWORD=zabbix"
+      - "MYSQL_DATABASE=zabbix"
+      - "DB_SERVER_HOST=zabbix-mariadb"
+    image: "zabbix/zabbix-web-apache-mysql:ubuntu-6.4.0"
+    depends_on:
+      - zabbix-server
+      - zabbix-mariadb
+    ports:
+      - "8080:8080/tcp"
+      - "8443:8443/tcp"
+    user: "1997"
+    volumes:
+      - "web_modules:/usr/share/zabbix/modules/"
+      - "apache2:/etc/apache2"
+    working_dir: "/usr/share/zabbix"
+
+volumes:
+  mariadb_data:
+  server_data:
+  server_export:
+  server_snmptraps:
+  web_modules:
+  apache2:
